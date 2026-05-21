@@ -1,0 +1,27 @@
+# Common
+.DS_Store
+Thumbs.db
+.env
+*.log
+
+# Node / NestJS
+backend/node_modules/
+backend/dist/
+backend/coverage/
+
+# Flutter
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.packages
+frontend/build/
+frontend/android/
+frontend/ios/
+frontend/linux/
+frontend/macos/
+frontend/web/
+frontend/windows/
+
+# IDE
+.idea/
+.vscode/
