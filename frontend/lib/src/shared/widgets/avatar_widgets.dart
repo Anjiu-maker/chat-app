@@ -4,6 +4,7 @@ class UserInitialAvatar extends StatelessWidget {
   const UserInitialAvatar({
     required this.name,
     this.size = 58,
+    this.avatarUrl,
     this.showOnline = false,
     this.online = false,
     super.key,
@@ -11,6 +12,7 @@ class UserInitialAvatar extends StatelessWidget {
 
   final String name;
   final double size;
+  final String? avatarUrl;
   final bool showOnline;
   final bool online;
 
@@ -22,25 +24,15 @@ class UserInitialAvatar extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF6AA5FF), Color(0xFF185CF2)],
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  name.isEmpty ? '用' : name.substring(0, 1),
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: size * .34,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
+            child: ClipOval(
+              child: avatarUrl?.isNotEmpty == true
+                  ? Image.network(
+                      avatarUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _InitialAvatarFace(name: name, size: size),
+                    )
+                  : _InitialAvatarFace(name: name, size: size),
             ),
           ),
           if (showOnline && online)
@@ -127,6 +119,40 @@ class SystemAvatar extends StatelessWidget {
         ),
       ),
       child: Icon(icon, color: iconColor, size: size * .45),
+    );
+  }
+}
+
+class _InitialAvatarFace extends StatelessWidget {
+  const _InitialAvatarFace({
+    required this.name,
+    required this.size,
+  });
+
+  final String name;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF6AA5FF), Color(0xFF185CF2)],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          name.isEmpty ? '用' : name.substring(0, 1),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: size * .34,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
     );
   }
 }

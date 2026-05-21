@@ -175,6 +175,18 @@ export class ConversationsService {
     });
   }
 
+  async unreadCountForMember(member: ConversationMember) {
+    const unreadSince = member.lastReadAt ?? member.joinedAt ?? member.createdAt;
+    return this.messages.count({
+      where: {
+        conversationId: member.conversationId,
+        deletedAt: IsNull(),
+        senderId: Not(member.userId),
+        createdAt: MoreThan(unreadSince),
+      },
+    });
+  }
+
   private async decorateConversation(
     conversation: Conversation,
     membership: ConversationMember,
@@ -194,16 +206,7 @@ export class ConversationsService {
     const members = shouldIncludeMembers
       ? await this.members.find({ where: { conversationId: conversation.id } })
       : [];
-    const unreadSince =
-      membership.lastReadAt ?? membership.joinedAt ?? conversation.createdAt;
-    const unreadCount = await this.messages.count({
-      where: {
-        conversationId: conversation.id,
-        deletedAt: IsNull(),
-        senderId: Not(membership.userId),
-        createdAt: MoreThan(unreadSince),
-      },
-    });
+    const unreadCount = await this.unreadCountForMember(membership);
 
     return {
       id: conversation.id,

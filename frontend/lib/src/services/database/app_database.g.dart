@@ -44,9 +44,24 @@ class $SessionTableTable extends SessionTable
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant(''));
+  static const VerificationMeta _avatarUrlMeta =
+      const VerificationMeta('avatarUrl');
+  @override
+  late final GeneratedColumn<String> avatarUrl = GeneratedColumn<String>(
+      'avatar_url', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _bioMeta = const VerificationMeta('bio');
+  @override
+  late final GeneratedColumn<String> bio = GeneratedColumn<String>(
+      'bio', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
   @override
   List<GeneratedColumn> get $columns =>
-      [id, accessToken, userId, phone, nickname];
+      [id, accessToken, userId, phone, nickname, avatarUrl, bio];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -80,6 +95,14 @@ class $SessionTableTable extends SessionTable
       context.handle(_nicknameMeta,
           nickname.isAcceptableOrUnknown(data['nickname']!, _nicknameMeta));
     }
+    if (data.containsKey('avatar_url')) {
+      context.handle(_avatarUrlMeta,
+          avatarUrl.isAcceptableOrUnknown(data['avatar_url']!, _avatarUrlMeta));
+    }
+    if (data.containsKey('bio')) {
+      context.handle(
+          _bioMeta, bio.isAcceptableOrUnknown(data['bio']!, _bioMeta));
+    }
     return context;
   }
 
@@ -99,6 +122,10 @@ class $SessionTableTable extends SessionTable
           .read(DriftSqlType.string, data['${effectivePrefix}phone'])!,
       nickname: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}nickname'])!,
+      avatarUrl: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}avatar_url'])!,
+      bio: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}bio'])!,
     );
   }
 
@@ -115,12 +142,16 @@ class SessionTableData extends DataClass
   final String userId;
   final String phone;
   final String nickname;
+  final String avatarUrl;
+  final String bio;
   const SessionTableData(
       {required this.id,
       required this.accessToken,
       required this.userId,
       required this.phone,
-      required this.nickname});
+      required this.nickname,
+      required this.avatarUrl,
+      required this.bio});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -129,6 +160,8 @@ class SessionTableData extends DataClass
     map['user_id'] = Variable<String>(userId);
     map['phone'] = Variable<String>(phone);
     map['nickname'] = Variable<String>(nickname);
+    map['avatar_url'] = Variable<String>(avatarUrl);
+    map['bio'] = Variable<String>(bio);
     return map;
   }
 
@@ -139,6 +172,8 @@ class SessionTableData extends DataClass
       userId: Value(userId),
       phone: Value(phone),
       nickname: Value(nickname),
+      avatarUrl: Value(avatarUrl),
+      bio: Value(bio),
     );
   }
 
@@ -151,6 +186,8 @@ class SessionTableData extends DataClass
       userId: serializer.fromJson<String>(json['userId']),
       phone: serializer.fromJson<String>(json['phone']),
       nickname: serializer.fromJson<String>(json['nickname']),
+      avatarUrl: serializer.fromJson<String>(json['avatarUrl']),
+      bio: serializer.fromJson<String>(json['bio']),
     );
   }
   @override
@@ -162,6 +199,8 @@ class SessionTableData extends DataClass
       'userId': serializer.toJson<String>(userId),
       'phone': serializer.toJson<String>(phone),
       'nickname': serializer.toJson<String>(nickname),
+      'avatarUrl': serializer.toJson<String>(avatarUrl),
+      'bio': serializer.toJson<String>(bio),
     };
   }
 
@@ -170,13 +209,17 @@ class SessionTableData extends DataClass
           String? accessToken,
           String? userId,
           String? phone,
-          String? nickname}) =>
+          String? nickname,
+          String? avatarUrl,
+          String? bio}) =>
       SessionTableData(
         id: id ?? this.id,
         accessToken: accessToken ?? this.accessToken,
         userId: userId ?? this.userId,
         phone: phone ?? this.phone,
         nickname: nickname ?? this.nickname,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
+        bio: bio ?? this.bio,
       );
   SessionTableData copyWithCompanion(SessionTableCompanion data) {
     return SessionTableData(
@@ -186,6 +229,8 @@ class SessionTableData extends DataClass
       userId: data.userId.present ? data.userId.value : this.userId,
       phone: data.phone.present ? data.phone.value : this.phone,
       nickname: data.nickname.present ? data.nickname.value : this.nickname,
+      avatarUrl: data.avatarUrl.present ? data.avatarUrl.value : this.avatarUrl,
+      bio: data.bio.present ? data.bio.value : this.bio,
     );
   }
 
@@ -196,13 +241,16 @@ class SessionTableData extends DataClass
           ..write('accessToken: $accessToken, ')
           ..write('userId: $userId, ')
           ..write('phone: $phone, ')
-          ..write('nickname: $nickname')
+          ..write('nickname: $nickname, ')
+          ..write('avatarUrl: $avatarUrl, ')
+          ..write('bio: $bio')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, accessToken, userId, phone, nickname);
+  int get hashCode =>
+      Object.hash(id, accessToken, userId, phone, nickname, avatarUrl, bio);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -211,7 +259,9 @@ class SessionTableData extends DataClass
           other.accessToken == this.accessToken &&
           other.userId == this.userId &&
           other.phone == this.phone &&
-          other.nickname == this.nickname);
+          other.nickname == this.nickname &&
+          other.avatarUrl == this.avatarUrl &&
+          other.bio == this.bio);
 }
 
 class SessionTableCompanion extends UpdateCompanion<SessionTableData> {
@@ -220,6 +270,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionTableData> {
   final Value<String> userId;
   final Value<String> phone;
   final Value<String> nickname;
+  final Value<String> avatarUrl;
+  final Value<String> bio;
   final Value<int> rowid;
   const SessionTableCompanion({
     this.id = const Value.absent(),
@@ -227,6 +279,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionTableData> {
     this.userId = const Value.absent(),
     this.phone = const Value.absent(),
     this.nickname = const Value.absent(),
+    this.avatarUrl = const Value.absent(),
+    this.bio = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SessionTableCompanion.insert({
@@ -235,6 +289,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionTableData> {
     this.userId = const Value.absent(),
     this.phone = const Value.absent(),
     this.nickname = const Value.absent(),
+    this.avatarUrl = const Value.absent(),
+    this.bio = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id);
   static Insertable<SessionTableData> custom({
@@ -243,6 +299,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionTableData> {
     Expression<String>? userId,
     Expression<String>? phone,
     Expression<String>? nickname,
+    Expression<String>? avatarUrl,
+    Expression<String>? bio,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -251,6 +309,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionTableData> {
       if (userId != null) 'user_id': userId,
       if (phone != null) 'phone': phone,
       if (nickname != null) 'nickname': nickname,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
+      if (bio != null) 'bio': bio,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -261,6 +321,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionTableData> {
       Value<String>? userId,
       Value<String>? phone,
       Value<String>? nickname,
+      Value<String>? avatarUrl,
+      Value<String>? bio,
       Value<int>? rowid}) {
     return SessionTableCompanion(
       id: id ?? this.id,
@@ -268,6 +330,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionTableData> {
       userId: userId ?? this.userId,
       phone: phone ?? this.phone,
       nickname: nickname ?? this.nickname,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      bio: bio ?? this.bio,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -290,6 +354,12 @@ class SessionTableCompanion extends UpdateCompanion<SessionTableData> {
     if (nickname.present) {
       map['nickname'] = Variable<String>(nickname.value);
     }
+    if (avatarUrl.present) {
+      map['avatar_url'] = Variable<String>(avatarUrl.value);
+    }
+    if (bio.present) {
+      map['bio'] = Variable<String>(bio.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -304,6 +374,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionTableData> {
           ..write('userId: $userId, ')
           ..write('phone: $phone, ')
           ..write('nickname: $nickname, ')
+          ..write('avatarUrl: $avatarUrl, ')
+          ..write('bio: $bio, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1769,6 +1841,8 @@ typedef $$SessionTableTableCreateCompanionBuilder = SessionTableCompanion
   Value<String> userId,
   Value<String> phone,
   Value<String> nickname,
+  Value<String> avatarUrl,
+  Value<String> bio,
   Value<int> rowid,
 });
 typedef $$SessionTableTableUpdateCompanionBuilder = SessionTableCompanion
@@ -1778,6 +1852,8 @@ typedef $$SessionTableTableUpdateCompanionBuilder = SessionTableCompanion
   Value<String> userId,
   Value<String> phone,
   Value<String> nickname,
+  Value<String> avatarUrl,
+  Value<String> bio,
   Value<int> rowid,
 });
 
@@ -1804,6 +1880,12 @@ class $$SessionTableTableFilterComposer
 
   ColumnFilters<String> get nickname => $composableBuilder(
       column: $table.nickname, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get avatarUrl => $composableBuilder(
+      column: $table.avatarUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get bio => $composableBuilder(
+      column: $table.bio, builder: (column) => ColumnFilters(column));
 }
 
 class $$SessionTableTableOrderingComposer
@@ -1829,6 +1911,12 @@ class $$SessionTableTableOrderingComposer
 
   ColumnOrderings<String> get nickname => $composableBuilder(
       column: $table.nickname, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get avatarUrl => $composableBuilder(
+      column: $table.avatarUrl, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get bio => $composableBuilder(
+      column: $table.bio, builder: (column) => ColumnOrderings(column));
 }
 
 class $$SessionTableTableAnnotationComposer
@@ -1854,6 +1942,12 @@ class $$SessionTableTableAnnotationComposer
 
   GeneratedColumn<String> get nickname =>
       $composableBuilder(column: $table.nickname, builder: (column) => column);
+
+  GeneratedColumn<String> get avatarUrl =>
+      $composableBuilder(column: $table.avatarUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get bio =>
+      $composableBuilder(column: $table.bio, builder: (column) => column);
 }
 
 class $$SessionTableTableTableManager extends RootTableManager<
@@ -1887,6 +1981,8 @@ class $$SessionTableTableTableManager extends RootTableManager<
             Value<String> userId = const Value.absent(),
             Value<String> phone = const Value.absent(),
             Value<String> nickname = const Value.absent(),
+            Value<String> avatarUrl = const Value.absent(),
+            Value<String> bio = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               SessionTableCompanion(
@@ -1895,6 +1991,8 @@ class $$SessionTableTableTableManager extends RootTableManager<
             userId: userId,
             phone: phone,
             nickname: nickname,
+            avatarUrl: avatarUrl,
+            bio: bio,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -1903,6 +2001,8 @@ class $$SessionTableTableTableManager extends RootTableManager<
             Value<String> userId = const Value.absent(),
             Value<String> phone = const Value.absent(),
             Value<String> nickname = const Value.absent(),
+            Value<String> avatarUrl = const Value.absent(),
+            Value<String> bio = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               SessionTableCompanion.insert(
@@ -1911,6 +2011,8 @@ class $$SessionTableTableTableManager extends RootTableManager<
             userId: userId,
             phone: phone,
             nickname: nickname,
+            avatarUrl: avatarUrl,
+            bio: bio,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

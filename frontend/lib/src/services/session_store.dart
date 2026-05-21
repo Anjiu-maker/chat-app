@@ -17,6 +17,22 @@ class AppUser {
   final String? avatarUrl;
   final String? bio;
 
+  AppUser copyWith({
+    String? id,
+    String? phone,
+    String? nickname,
+    String? avatarUrl,
+    String? bio,
+  }) {
+    return AppUser(
+      id: id ?? this.id,
+      phone: phone ?? this.phone,
+      nickname: nickname ?? this.nickname,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      bio: bio ?? this.bio,
+    );
+  }
+
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
       id: json['id'] as String? ?? '',
@@ -63,10 +79,12 @@ class SessionStore extends ChangeNotifier {
         id: userId,
         phone: row.phone,
         nickname: row.nickname,
+        avatarUrl: row.avatarUrl.isEmpty ? null : row.avatarUrl,
+        bio: row.bio.isEmpty ? null : row.bio,
       );
       notifyListeners();
     } catch (_) {
-      // 首次启动尚无 session 行时忽略
+      // 首次启动尚无 session 表时忽略
     }
   }
 
@@ -85,6 +103,8 @@ class SessionStore extends ChangeNotifier {
         userId: user.id,
         phone: user.phone,
         nickname: user.nickname,
+        avatarUrl: user.avatarUrl ?? '',
+        bio: user.bio ?? '',
       );
     } catch (_) {
       // 持久化失败不阻断登录流程

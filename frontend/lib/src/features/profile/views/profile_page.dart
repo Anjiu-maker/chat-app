@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../services/session_store.dart';
 import '../../../shared/widgets/app_chrome.dart';
 import '../../../shared/widgets/avatar_widgets.dart';
+import 'profile_edit_page.dart';
 import 'settings_page.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -10,86 +11,106 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = SessionStore.instance.user;
-    return Stack(
-      children: [
-        BlueHeader(
-          height: 160,
-          title: '我',
-          actions: [
-            HeaderIconButton(
-              icon: Icons.qr_code_rounded,
-              onPressed: () => _showQrSheet(context),
+    return AnimatedBuilder(
+      animation: SessionStore.instance,
+      builder: (context, _) {
+        final user = SessionStore.instance.user;
+        return Stack(
+          children: [
+            BlueHeader(
+              height: 160,
+              title: '我',
+              actions: [
+                HeaderIconButton(
+                  icon: Icons.qr_code_rounded,
+                  onPressed: () => _showQrSheet(context),
+                ),
+                HeaderIconButton(
+                  icon: Icons.settings_rounded,
+                  filled: true,
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsPage()),
+                  ),
+                ),
+              ],
             ),
-            HeaderIconButton(
-              icon: Icons.settings_rounded,
-              filled: true,
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsPage()),
+            WhitePanel(
+              top: 124,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
+                children: [
+                  _UserCard(
+                    user: user,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const ProfileEditPage(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _ActionCard(
+                    children: [
+                      _ProfileAction(
+                        icon: Icons.person_outline_rounded,
+                        title: '个人资料',
+                        subtitle: '头像、用户名、个人签名',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ProfileEditPage(),
+                          ),
+                        ),
+                      ),
+                      _ProfileAction(
+                        icon: Icons.security_rounded,
+                        title: '账号与安全',
+                        subtitle: '手机号、登录密码',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ProfileEditPage(),
+                          ),
+                        ),
+                      ),
+                      _ProfileAction(
+                        icon: Icons.notifications_none_rounded,
+                        title: '消息通知',
+                        subtitle: '提醒、免打扰、声音与振动',
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _ActionCard(
+                    children: [
+                      _ProfileAction(
+                        icon: Icons.folder_copy_outlined,
+                        title: '文件与收藏',
+                        subtitle: '图片、文档、已收藏消息',
+                        onTap: () {},
+                      ),
+                      _ProfileAction(
+                        icon: Icons.palette_outlined,
+                        title: '外观设置',
+                        subtitle: '主题、字号、聊天背景',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsPage(),
+                          ),
+                        ),
+                      ),
+                      _ProfileAction(
+                        icon: Icons.help_outline_rounded,
+                        title: '帮助与反馈',
+                        subtitle: '常见问题、意见反馈',
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
-        ),
-        WhitePanel(
-          top: 124,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
-            children: [
-              _UserCard(user: user),
-              const SizedBox(height: 16),
-              _ActionCard(
-                children: [
-                  _ProfileAction(
-                    icon: Icons.person_outline_rounded,
-                    title: '个人资料',
-                    subtitle: '头像、昵称、手机号',
-                    onTap: () {},
-                  ),
-                  _ProfileAction(
-                    icon: Icons.security_rounded,
-                    title: '账号与安全',
-                    subtitle: '手机号、密码、设备管理',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SettingsPage()),
-                    ),
-                  ),
-                  _ProfileAction(
-                    icon: Icons.notifications_none_rounded,
-                    title: '消息通知',
-                    subtitle: '提醒、免打扰、声音与震动',
-                    onTap: () {},
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _ActionCard(
-                children: [
-                  _ProfileAction(
-                    icon: Icons.folder_copy_outlined,
-                    title: '文件与收藏',
-                    subtitle: '图片、文档、已收藏消息',
-                    onTap: () {},
-                  ),
-                  _ProfileAction(
-                    icon: Icons.palette_outlined,
-                    title: '外观设置',
-                    subtitle: '主题、字号、聊天背景',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SettingsPage()),
-                    ),
-                  ),
-                  _ProfileAction(
-                    icon: Icons.help_outline_rounded,
-                    title: '帮助与反馈',
-                    subtitle: '常见问题、意见反馈',
-                    onTap: () {},
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -161,61 +182,87 @@ class ProfilePage extends StatelessWidget {
 }
 
 class _UserCard extends StatelessWidget {
-  const _UserCard({required this.user});
+  const _UserCard({required this.user, required this.onTap});
 
   final AppUser? user;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final name = user?.nickname ?? '未登录用户';
     final phone = user?.phone ?? '请先登录';
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    final bio = user?.bio?.isNotEmpty == true ? user!.bio! : '畅聊账号';
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      elevation: 0,
+      shadowColor: const Color(0x120C3A91),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120C3A91),
-            blurRadius: 24,
-            offset: Offset(0, 12),
+        child: Ink(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x120C3A91),
+                blurRadius: 24,
+                offset: Offset(0, 12),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          UserInitialAvatar(name: name, size: 78, showOnline: user != null),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Color(0xFF11131A),
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                  ),
+          child: Row(
+            children: [
+              UserInitialAvatar(
+                name: name,
+                avatarUrl: user?.avatarUrl,
+                size: 78,
+                showOnline: user != null,
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF11131A),
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      phone,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF858CA1),
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      bio,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF2478FF),
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  phone,
-                  style:
-                      const TextStyle(color: Color(0xFF858CA1), fontSize: 15),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  '畅聊账号',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Color(0xFF2478FF), fontSize: 15),
-                ),
-              ],
-            ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF9AA0B3)),
+            ],
           ),
-          const Icon(Icons.chevron_right_rounded, color: Color(0xFF9AA0B3)),
-        ],
+        ),
       ),
     );
   }

@@ -14,8 +14,8 @@ class AppSocketService {
     required String socketUrl,
     required String accessToken,
     this.offlineQueue,
-  }) : _socketUrl = socketUrl,
-      _accessToken = accessToken {
+  })  : _socketUrl = socketUrl,
+        _accessToken = accessToken {
     _connect();
   }
 
@@ -40,8 +40,7 @@ class AppSocketService {
 
   Stream<Map<String, dynamic>> get conversationUpdated =>
       _conversationUpdatedController.stream;
-  Stream<ChatMessage> get messageReceived =>
-      _messageReceivedController.stream;
+  Stream<ChatMessage> get messageReceived => _messageReceivedController.stream;
   Stream<List<ChatMessage>> get historyReceived =>
       _historyReceivedController.stream;
   Stream<SocketConnectionState> get connectionState =>
@@ -74,8 +73,8 @@ class AppSocketService {
       offlineQueue?.drain();
     });
 
-    _socket.onDisconnect(
-        (_) => _connectionStateController.add(SocketConnectionState.disconnected));
+    _socket.onDisconnect((_) =>
+        _connectionStateController.add(SocketConnectionState.disconnected));
 
     _socket.onConnectError(
         (_) => _connectionStateController.add(SocketConnectionState.error));
@@ -116,6 +115,9 @@ class AppSocketService {
           }
         }
         _persistMessage(msg, serverSeq: map['serverSeq']);
+        if (msg.conversationId == _currentConversationId) {
+          markRead(msg.conversationId);
+        }
       }
     });
 
@@ -132,14 +134,29 @@ class AppSocketService {
   void _onConversationUpdated(Map<String, dynamic> data) {
     final conversationId = data['conversationId'];
     final preview = data['lastMessagePreview'];
-    final lastMessageAt = data['lastMessageAt'];
     if (conversationId is! String) return;
+    final message = data['message'];
+    if (message is Map) {
+      _persistMessage(
+        ChatMessage.fromJson(Map<String, dynamic>.from(message)),
+        serverSeq: message['serverSeq'],
+      );
+    }
+    final isActiveConversation = conversationId == _currentConversationId;
+    var unreadCount = _parseInt(data['unreadCount']);
+    if (data['read'] == true) {
+      unreadCount = 0;
+    } else if (isActiveConversation && unreadCount != null) {
+      unreadCount = 0;
+    }
     final db = _db;
     if (db != null) {
-      db.updateConversationPreview(
+      db.updateConversationRealtime(
         conversationId: conversationId,
-        lastMessagePreview: (preview as String?) ?? '',
-        lastMessageAt: _parseTimestamp(lastMessageAt),
+        lastMessagePreview: preview is String ? preview : null,
+        lastMessageAt: _parseOptionalTimestamp(data['lastMessageAt']),
+        unreadCount: unreadCount,
+        lastReadAt: _parseOptionalTimestamp(data['lastReadAt']),
       );
     }
   }
@@ -180,19 +197,23 @@ class AppSocketService {
   }
 
   int? _parseServerSeq(dynamic value) {
-    if (value is int) return value;
-    if (value is String) return int.tryParse(value);
-    return null;
+    return _parseInt(value);
   }
 
-  int _parseTimestamp(dynamic value) {
+  int? _parseOptionalTimestamp(dynamic value) {
     if (value is String) {
-      return DateTime.tryParse(value)?.millisecondsSinceEpoch ?? 0;
+      return DateTime.tryParse(value)?.millisecondsSinceEpoch;
     }
     if (value is int) {
       return value;
     }
-    return 0;
+    return null;
+  }
+
+  int? _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   AppDatabase? get _db {
@@ -217,8 +238,7 @@ class AppSocketService {
     _socket.emit('conversation:leave', {'conversationId': conversationId});
   }
 
-  void sendMessage(String conversationId, String content,
-      {String? clientId}) {
+  void sendMessage(String conversationId, String content, {String? clientId}) {
     final trimmed = content.trim();
     if (trimmed.isEmpty) return;
     _socket.emit('message:send', {
@@ -229,6 +249,14 @@ class AppSocketService {
   }
 
   void markRead(String conversationId) {
+    final db = _db;
+    if (db != null) {
+      db.updateConversationRealtime(
+        conversationId: conversationId,
+        unreadCount: 0,
+        lastReadAt: DateTime.now().millisecondsSinceEpoch,
+      );
+    }
     _socket.emit('message:read', {'conversationId': conversationId});
   }
 

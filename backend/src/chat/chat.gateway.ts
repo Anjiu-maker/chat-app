@@ -122,13 +122,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       dto.conversationId,
     );
     for (const member of members) {
+      const unreadCount =
+        await this.conversationsService.unreadCountForMember(member);
       this.server
         .to(this.userRoom(member.userId))
         .emit('conversation:updated', {
           conversationId: dto.conversationId,
           messageId: message.id,
+          message,
           lastMessagePreview: message.content,
           lastMessageAt: message.createdAt,
+          unreadCount,
           senderId: user.id,
         });
     }
@@ -154,6 +158,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       conversationId: body.conversationId,
       read: true,
       lastReadAt: result.lastReadAt,
+      unreadCount: 0,
       userId: user.id,
     });
     return result;

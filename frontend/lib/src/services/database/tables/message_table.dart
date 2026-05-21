@@ -13,7 +13,4 @@ class MessagesTable extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-
-  @override
-  List<String> get customConstraints => ['UNIQUE(conversationId, id)'];
 }

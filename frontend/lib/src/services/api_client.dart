@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -82,7 +83,8 @@ class AppFriendRequest {
   factory AppFriendRequest.fromJson(Map<String, dynamic> json) {
     return AppFriendRequest(
       id: json['id'] as String? ?? '',
-      fromUser: AppUser.fromJson((json['fromUser'] as Map?)?.cast<String, dynamic>() ?? {}),
+      fromUser: AppUser.fromJson(
+          (json['fromUser'] as Map?)?.cast<String, dynamic>() ?? {}),
       toUser: json['toUser'] != null
           ? AppUser.fromJson((json['toUser'] as Map).cast<String, dynamic>())
           : null,
@@ -188,6 +190,38 @@ class ApiClient {
         .toList();
   }
 
+  Future<AppUser> me() async {
+    final data = await _get('/users/me');
+    final user = AppUser.fromJson(data as Map<String, dynamic>);
+    await _saveUser(user);
+    return user;
+  }
+
+  Future<AppUser> updateMe({
+    String? nickname,
+    String? avatarUrl,
+    String? bio,
+  }) async {
+    final data = await _patch('/users/me', {
+      if (nickname != null) 'nickname': nickname,
+      if (avatarUrl != null) 'avatarUrl': avatarUrl,
+      if (bio != null) 'bio': bio,
+    });
+    final user = AppUser.fromJson(data);
+    await _saveUser(user);
+    return user;
+  }
+
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _patch('/users/me/password', {
+      'currentPassword': currentPassword,
+      'newPassword': newPassword,
+    });
+  }
+
   Future<List<AppContact>> contacts() async {
     final data = await _get('/contacts');
     return (data as List)
@@ -209,8 +243,8 @@ class ApiClient {
     final data = await _get('/contacts/requests/incoming');
     return (data as List)
         .whereType<Map>()
-        .map(
-            (item) => AppFriendRequest.fromJson(Map<String, dynamic>.from(item)))
+        .map((item) =>
+            AppFriendRequest.fromJson(Map<String, dynamic>.from(item)))
         .toList();
   }
 
@@ -218,8 +252,8 @@ class ApiClient {
     final data = await _get('/contacts/requests/outgoing');
     return (data as List)
         .whereType<Map>()
-        .map(
-            (item) => AppFriendRequest.fromJson(Map<String, dynamic>.from(item)))
+        .map((item) =>
+            AppFriendRequest.fromJson(Map<String, dynamic>.from(item)))
         .toList();
   }
 
@@ -318,6 +352,51 @@ class ApiClient {
     return _decodeResponse(response.statusCode, body) as Map<String, dynamic>;
   }
 
+  Future<AppUser> uploadAvatar(File file) async {
+    final token = SessionStore.instance.accessToken;
+    if (token == null) {
+      throw ApiException('请先登录');
+    }
+
+    final request = http.MultipartRequest('POST', _uri('/users/me/avatar'))
+      ..headers['Authorization'] = 'Bearer $token'
+      ..files.add(await http.MultipartFile.fromPath('avatar', file.path));
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+    final user = AppUser.fromJson(
+      _decodeResponse(response.statusCode, body) as Map<String, dynamic>,
+    );
+    await _saveUser(user);
+    return user;
+  }
+
+  Future<AppUser> uploadAvatarBytes({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    final token = SessionStore.instance.accessToken;
+    if (token == null) {
+      throw ApiException('请先登录');
+    }
+
+    final request = http.MultipartRequest('POST', _uri('/users/me/avatar'))
+      ..headers['Authorization'] = 'Bearer $token'
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'avatar',
+          bytes,
+          filename: filename.isEmpty ? 'avatar.png' : filename,
+        ),
+      );
+    final response = await request.send();
+    final body = await response.stream.bytesToString();
+    final user = AppUser.fromJson(
+      _decodeResponse(response.statusCode, body) as Map<String, dynamic>,
+    );
+    await _saveUser(user);
+    return user;
+  }
+
   Future<dynamic> _get(String path, [Map<String, String>? query]) async {
     final response =
         await _httpClient.get(_uri(path, query), headers: _headers());
@@ -338,9 +417,21 @@ class ApiClient {
         as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> _patch(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    final response = await _httpClient.patch(
+      _uri(path),
+      headers: _headers(),
+      body: jsonEncode(body),
+    );
+    return _decodeResponse(response.statusCode, response.body)
+        as Map<String, dynamic>;
+  }
+
   Future<dynamic> _delete(String path) async {
-    final response =
-        await _httpClient.delete(_uri(path), headers: _headers());
+    final response = await _httpClient.delete(_uri(path), headers: _headers());
     return _decodeResponse(response.statusCode, response.body);
   }
 
@@ -369,5 +460,13 @@ class ApiClient {
       accessToken: data['accessToken'] as String,
       user: AppUser.fromJson(data['user'] as Map<String, dynamic>),
     );
+  }
+
+  Future<void> _saveUser(AppUser user) {
+    final token = SessionStore.instance.accessToken;
+    if (token == null) {
+      throw ApiException('请先登录');
+    }
+    return SessionStore.instance.save(accessToken: token, user: user);
   }
 }

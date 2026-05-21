@@ -29,6 +29,7 @@ class ChatRoomPage extends StatefulWidget {
 
 class _ChatRoomPageState extends State<ChatRoomPage> {
   final _controller = TextEditingController();
+  final _scrollController = ScrollController();
   final _messages = <LocalMessage>[];
   final _api = ApiClient();
   StreamSubscription<List<LocalMessage>>? _dbSubscription;
@@ -50,13 +51,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         .watchMessages(widget.conversationId)
         .listen((messages) {
       if (!mounted) return;
-      _historyLoaded = true;
-      _historyFallbackTimer?.cancel();
+      final shouldScrollToLatest = _shouldScrollToLatest(messages.length);
+      final wasEmpty = _messages.isEmpty;
+      if (messages.isNotEmpty) {
+        _historyLoaded = true;
+        _historyFallbackTimer?.cancel();
+      }
       setState(() {
         _messages
           ..clear()
           ..addAll(messages);
       });
+      if (shouldScrollToLatest) {
+        _scrollToLatest(animated: !wasEmpty);
+      }
     });
 
     _connectionSubscription = service.connectionState.listen((state) {
@@ -73,13 +81,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   Future<void> _joinConversationWithSync(AppSocketService service) async {
     final maxSeq =
         await DatabaseService.instance.db.maxServerSeq(widget.conversationId);
-    service.joinConversation(widget.conversationId,
-        afterSeq: maxSeq ?? 0);
+    if (maxSeq != null && maxSeq > 0) {
+      service.joinConversation(widget.conversationId, afterSeq: maxSeq);
+      return;
+    }
+    service.joinConversation(widget.conversationId);
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _scrollController.dispose();
     _dbSubscription?.cancel();
     _connectionSubscription?.cancel();
     _historyFallbackTimer?.cancel();
@@ -116,8 +128,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     child: _messages.isEmpty
                         ? const _EmptyMessages()
                         : ListView.builder(
-                            padding:
-                                const EdgeInsets.fromLTRB(18, 24, 18, 18),
+                            controller: _scrollController,
+                            padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
                             itemCount: _messages.length,
                             itemBuilder: (context, index) {
                               final message = _messages[index];
@@ -179,6 +191,30 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     _controller.clear();
   }
 
+  bool _shouldScrollToLatest(int nextMessageCount) {
+    if (nextMessageCount == 0) return false;
+    if (_messages.isEmpty || !_scrollController.hasClients) return true;
+    final position = _scrollController.position;
+    final distanceToBottom = position.maxScrollExtent - position.pixels;
+    return distanceToBottom < 160;
+  }
+
+  void _scrollToLatest({required bool animated}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final target = _scrollController.position.maxScrollExtent;
+      if (animated) {
+        _scrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _scrollController.jumpTo(target);
+      }
+    });
+  }
+
   Future<void> _loadHistoryFallback() async {
     if (_historyLoaded || !mounted) return;
     try {
@@ -195,6 +231,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 createdAt: msg.createdAt.millisecondsSinceEpoch,
               ))
           .toList();
+      _historyLoaded = true;
       await DatabaseService.instance.db.batchInsertMessages(rows);
     } catch (_) {
       // socket 和 HTTP 都失败时保持空状态。
@@ -271,8 +308,7 @@ class _MessageBubble extends StatelessWidget {
             decoration: BoxDecoration(
               color: isMe ? const Color(0xFF2478FF) : Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border:
-                  isMe ? null : Border.all(color: const Color(0xFFE2E7F1)),
+              border: isMe ? null : Border.all(color: const Color(0xFFE2E7F1)),
               boxShadow: const [
                 BoxShadow(
                     color: Color(0x080C3A91),
@@ -281,8 +317,7 @@ class _MessageBubble extends StatelessWidget {
               ],
             ),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               child: Text(
                 message.content,
                 style: TextStyle(
@@ -342,8 +377,8 @@ class _ChatInputBar extends StatelessWidget {
                   onSubmitted: (_) => onSend(),
                   decoration: InputDecoration(
                     hintText: '输入消息...',
-                    hintStyle: const TextStyle(
-                        color: Color(0xFFB0B7C7), fontSize: 16),
+                    hintStyle:
+                        const TextStyle(color: Color(0xFFB0B7C7), fontSize: 16),
                     filled: true,
                     fillColor: Colors.transparent,
                     border: OutlineInputBorder(

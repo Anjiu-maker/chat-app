@@ -22,7 +22,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openDatabase());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -35,11 +35,15 @@ class AppDatabase extends _$AppDatabase {
                 userId: Value(''),
                 phone: Value(''),
                 nickname: Value(''),
+                avatarUrl: Value(''),
+                bio: Value(''),
               ),
             );
             await into(syncStateTable).insert(
               const SyncStateTableCompanion(id: Value('global')),
             );
+          } else {
+            await _ensureMessagesTableColumns('messages_table');
           }
         },
         onUpgrade: (m, from, to) async {
@@ -50,10 +54,52 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             await m.createTable(pendingMessagesTable);
           }
+          if (from < 4) {
+            await m.addColumn(sessionTable, sessionTable.avatarUrl);
+            await m.addColumn(sessionTable, sessionTable.bio);
+          }
+          if (from < 5) {
+            await _ensureMessagesTableColumns('messages_table');
+            // Recreate messages_table without redundant UNIQUE(conversationId, id)
+            await customStatement(
+                'ALTER TABLE messages_table RENAME TO messages_table_old');
+            await m.createTable(messagesTable);
+            await customStatement(
+                'INSERT INTO messages_table (id, conversation_id, sender_id, sender_name, content, type, created_at, server_seq) '
+                'SELECT id, conversation_id, sender_id, sender_name, content, type, created_at, server_seq FROM messages_table_old');
+            await customStatement('DROP TABLE messages_table_old');
+          }
         },
       );
 
   // ── Session ──
+
+  Future<void> _ensureMessagesTableColumns(String tableName) async {
+    if (!await _tableExists(tableName)) return;
+    if (!await _columnExists(tableName, 'sender_name')) {
+      await customStatement(
+        "ALTER TABLE $tableName ADD COLUMN sender_name TEXT NOT NULL DEFAULT ''",
+      );
+    }
+    if (!await _columnExists(tableName, 'server_seq')) {
+      await customStatement(
+        'ALTER TABLE $tableName ADD COLUMN server_seq INTEGER',
+      );
+    }
+  }
+
+  Future<bool> _tableExists(String tableName) async {
+    final result = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+      variables: [Variable.withString(tableName)],
+    ).get();
+    return result.isNotEmpty;
+  }
+
+  Future<bool> _columnExists(String tableName, String columnName) async {
+    final columns = await customSelect('PRAGMA table_info($tableName)').get();
+    return columns.any((row) => row.data['name'] == columnName);
+  }
 
   Future<SessionTableData?> getSession() =>
       (select(sessionTable)..limit(1)).getSingleOrNull();
@@ -63,6 +109,8 @@ class AppDatabase extends _$AppDatabase {
     required String userId,
     required String phone,
     required String nickname,
+    required String avatarUrl,
+    required String bio,
   }) async {
     await into(sessionTable).insertOnConflictUpdate(
       SessionTableCompanion(
@@ -71,6 +119,8 @@ class AppDatabase extends _$AppDatabase {
         userId: Value(userId),
         phone: Value(phone),
         nickname: Value(nickname),
+        avatarUrl: Value(avatarUrl),
+        bio: Value(bio),
       ),
     );
   }
@@ -82,6 +132,8 @@ class AppDatabase extends _$AppDatabase {
         userId: Value(''),
         phone: Value(''),
         nickname: Value(''),
+        avatarUrl: Value(''),
+        bio: Value(''),
       ),
     );
   }
@@ -181,12 +233,39 @@ class AppDatabase extends _$AppDatabase {
       {required String conversationId,
       required String lastMessagePreview,
       required int lastMessageAt}) async {
+    await updateConversationRealtime(
+      conversationId: conversationId,
+      lastMessagePreview: lastMessagePreview,
+      lastMessageAt: lastMessageAt,
+    );
+  }
+
+  Future<void> updateConversationRealtime({
+    required String conversationId,
+    String? lastMessagePreview,
+    int? lastMessageAt,
+    int? unreadCount,
+    int? lastReadAt,
+  }) async {
+    if (lastMessagePreview == null &&
+        lastMessageAt == null &&
+        unreadCount == null &&
+        lastReadAt == null) {
+      return;
+    }
     await (update(conversationsTable)
           ..where((t) => t.id.equals(conversationId)))
         .write(
       ConversationsTableCompanion(
-        lastMessagePreview: Value(lastMessagePreview),
-        lastMessageAt: Value(lastMessageAt),
+        lastMessagePreview: lastMessagePreview == null
+            ? const Value.absent()
+            : Value(lastMessagePreview),
+        lastMessageAt:
+            lastMessageAt == null ? const Value.absent() : Value(lastMessageAt),
+        unreadCount:
+            unreadCount == null ? const Value.absent() : Value(unreadCount),
+        lastReadAt:
+            lastReadAt == null ? const Value.absent() : Value(lastReadAt),
       ),
     );
   }
