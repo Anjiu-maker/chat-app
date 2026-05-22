@@ -68,7 +68,7 @@ class ChatHistoryTransferService {
   }
 
   Future<ChatHistoryImportResult?> importFromPicker() async {
-    final picked = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['chatbackup', 'json'],
       withData: true,

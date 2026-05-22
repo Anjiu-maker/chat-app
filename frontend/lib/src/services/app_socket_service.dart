@@ -238,12 +238,20 @@ class AppSocketService {
     _socket.emit('conversation:leave', {'conversationId': conversationId});
   }
 
-  void sendMessage(String conversationId, String content, {String? clientId}) {
+  void sendMessage(
+    String conversationId,
+    String content, {
+    String type = 'text',
+    String? fileId,
+    String? clientId,
+  }) {
     final trimmed = content.trim();
     if (trimmed.isEmpty) return;
     _socket.emit('message:send', {
       'conversationId': conversationId,
       'content': trimmed,
+      'type': type,
+      if (fileId != null) 'fileId': fileId,
       if (clientId != null) 'clientId': clientId,
     });
   }

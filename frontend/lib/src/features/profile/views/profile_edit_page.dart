@@ -241,7 +241,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
   Future<void> _pickAvatar() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.image,
         withData: true,
       );

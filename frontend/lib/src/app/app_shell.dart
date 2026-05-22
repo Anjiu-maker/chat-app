@@ -39,6 +39,7 @@ class _AppShellState extends State<AppShell> {
           _appSocketService!.sendMessage(
             msg.conversationId,
             msg.content,
+            type: msg.type,
             clientId: msg.localId,
           );
           return true;
@@ -53,8 +54,7 @@ class _AppShellState extends State<AppShell> {
     // Watch local conversations table — any change updates badge
     _badgeSubscription =
         DatabaseService.instance.db.watchConversations().listen((rows) {
-      final unread =
-          rows.fold<int>(0, (sum, c) => sum + c.unreadCount);
+      final unread = rows.fold<int>(0, (sum, c) => sum + c.unreadCount);
       if (!mounted) return;
       setState(() => _messageBadge = unread);
     });
